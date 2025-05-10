@@ -47,26 +47,32 @@ function FileTree({ tree, onFileClick, level = 0 }) {
   return (
     <List disablePadding sx={{ pl: level * 2 }}>
       {tree.folders &&
-        Object.entries(tree.folders).map(([folder, subtree]) => {
-          const isOpen = openFolders[folder] || false;
-          const pdfCount = countPdfsInTree(subtree);
-          return (
-            <Box key={folder}>
-              <ListItemButton
-                onClick={() => setOpenFolders((prev) => ({ ...prev, [folder]: !isOpen }))}
-                sx={{ pl: 2, py: 0.5 }}
-              >
-                {isOpen ? <FolderOpenIcon fontSize="small" sx={{ mr: 1 }} /> : <FolderIcon fontSize="small" sx={{ mr: 1 }} />}
-                <ListItemText primary={folder} sx={{ flex: 1 }} />
-                <Badge color="primary" badgeContent={pdfCount} sx={{ mr: 1 }} size="small" />
-                {isOpen ? <ExpandLess /> : <ExpandMore />}
-              </ListItemButton>
-              <Collapse in={isOpen} timeout="auto" unmountOnExit>
-                <FileTree tree={subtree} onFileClick={onFileClick} level={level + 1} />
-              </Collapse>
-            </Box>
-          );
-        })}
+        Object.entries(tree.folders)
+          .map(([folder, subtree]) => ({
+            folder,
+            subtree,
+            pdfCount: countPdfsInTree(subtree),
+          }))
+          .sort((a, b) => b.pdfCount - a.pdfCount)
+          .map(({ folder, subtree, pdfCount }) => {
+            const isOpen = openFolders[folder] || false;
+            return (
+              <Box key={folder}>
+                <ListItemButton
+                  onClick={() => setOpenFolders((prev) => ({ ...prev, [folder]: !isOpen }))}
+                  sx={{ pl: 2, py: 0.5 }}
+                >
+                  {isOpen ? <FolderOpenIcon fontSize="small" sx={{ mr: 1 }} /> : <FolderIcon fontSize="small" sx={{ mr: 1 }} />}
+                  <ListItemText primary={folder} sx={{ flex: 1 }} />
+                  <Badge color="primary" badgeContent={pdfCount} sx={{ mr: 1 }} size="small" />
+                  {isOpen ? <ExpandLess /> : <ExpandMore />}
+                </ListItemButton>
+                <Collapse in={isOpen} timeout="auto" unmountOnExit>
+                  <FileTree tree={subtree} onFileClick={onFileClick} level={level + 1} />
+                </Collapse>
+              </Box>
+            );
+          })}
       {tree.files &&
         tree.files.map(({ name, file }) => (
           <ListItemButton key={name} onClick={() => onFileClick(file)} sx={{ pl: 4, py: 0.5 }}>
