@@ -1,0 +1,19 @@
+/* Tab close animation for react-transition-group */
+.tab-fade-enter {
+  opacity: 0;
+  transform: translateX(40px);
+}
+.tab-fade-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 250ms, transform 250ms cubic-bezier(0.4,0,0.2,1);
+}
+.tab-fade-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+.tab-fade-exit-active {
+  opacity: 0;
+  transform: translateX(-40px);
+  transition: opacity 250ms, transform 250ms cubic-bezier(0.4,0,0.2,1);
+}

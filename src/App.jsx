@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
-import { Box, Tabs, Tab, Divider, Drawer, IconButton } from '@mui/material';
+import React, { useState, useRef } from 'react';
+import { Box, Tabs, Tab, Divider, Drawer, IconButton, TextField } from '@mui/material';
+import { TransitionGroup, CSSTransition } from 'react-transition-group';
 import CloseIcon from '@mui/icons-material/Close';
 import { Worker, Viewer } from '@react-pdf-viewer/core';
 import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
 
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
+
+import './tab-animations.css';
 import { buildFileTree, FileTree } from './FileTree';
 
 
@@ -29,9 +32,18 @@ const TabPanel = ({ children, value, index }) => (
 
 export default function App() {
   const defaultLayoutPluginInstance = defaultLayoutPlugin();
+  const tabsRef = useRef(null);
+  const handleTabsScroll = (e) => {
+    e.preventDefault();
+    const scroller = tabsRef.current?.querySelector('.MuiTabs-scroller');
+    if (scroller) {
+      scroller.scrollLeft += e.deltaY;
+    }
+  };
   const [files, setFiles] = useState([]);     // All PDFs found in the chosen folder
   const [tabs, setTabs] = useState([]);       // Opened { name, url }
   const [activeTab, setActiveTab] = useState(0);
+  const [maxTabs, setMaxTabs] = useState(10); // user-defined max open tabs
 
   const handleDirectoryPick = (e) => {
     const list = Array.from(e.target.files).filter(
@@ -47,8 +59,16 @@ export default function App() {
       return;
     }
     const url = URL.createObjectURL(file);
-    setTabs((prev) => [...prev, { name: file.name, url }]);
-    setActiveTab(tabs.length);
+    setTabs((prev) => {
+      // Remove oldest tab if exceeding maxTabs
+      let newTabs = prev;
+      if (prev.length >= maxTabs) {
+        newTabs = prev.slice(1);
+      }
+      const updatedTabs = [...newTabs, { name: file.name, url }];
+      setActiveTab(updatedTabs.length - 1);
+      return updatedTabs;
+    });
   };
 
   const closeTab = (index) => {
@@ -117,6 +137,18 @@ export default function App() {
               Pick Folder…
             </Box>
           </label>
+          <TextField
+            label="Max Open Tabs"
+            type="number"
+            value={maxTabs}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val) && val > 0) setMaxTabs(val);
+            }}
+            inputProps={{ min: 1 }}
+            size="small"
+            sx={{ mt: 1, maxWidth: 200 }}
+          />
         </Box>
         <Divider />
         <Box sx={{ overflowY: 'auto', maxHeight: 'calc(100% - 110px)', p: 1, pt: 2 }}>
@@ -127,58 +159,113 @@ export default function App() {
       {/* Main */}
       <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', bgcolor: '#f7f8fa' }}>
         {/* Tabs header */}
-        <Tabs
-          value={activeTab}
-          onChange={(_, v) => setActiveTab(v)}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{
-            minHeight: 44,
-            maxWidth: 'calc(100vw - 360px)',
-            bgcolor: 'background.paper',
-            borderBottom: '1px solid #e0e0e0',
-            px: 1,
-          }}
-          TabIndicatorProps={{ style: { height: 3, background: '#1976d2', borderRadius: 2 } }}
-        >
-          {tabs.map((t, idx) => (
-            <Tab
-              key={idx}
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
-                  <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block', fontWeight: 500 }}>{t.name}</span>
-                  <IconButton
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      closeTab(idx);
-                    }}
-                    sx={{ ml: 0.5, color: 'text.secondary', '&:hover': { color: 'error.main', bgcolor: 'transparent' } }}
+        <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e0e0e0', bgcolor: 'background.paper', px: 1, minHeight: 44, maxWidth: 'calc(100vw - 360px)', minWidth: 0 }}>
+          {/* Tabs Scroll Wrapper */}
+          <Box
+            ref={tabsRef}
+            onWheel={handleTabsScroll}
+            sx={{ flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex' }}
+          >
+            <TransitionGroup component={null} style={{ width: '100%' }}>
+              <Tabs
+                value={activeTab}
+                onChange={(_, v) => setActiveTab(v)}
+                variant="scrollable"
+                scrollButtons="auto"
+                sx={{
+                  minHeight: 44,
+                  bgcolor: 'background.paper',
+                  borderBottom: 'none',
+                  overflow: 'visible',
+                  width: '100%',
+                }}
+                TabIndicatorProps={{ style: { height: 3, background: '#1976d2', borderRadius: 2 } }}
+                component={Box}
+              >
+                {tabs.map((t, idx) => (
+                  <CSSTransition
+                    key={t.name}
+                    timeout={250}
+                    classNames="tab-fade"
                   >
-                    <CloseIcon fontSize="inherit" />
-                  </IconButton>
-                </Box>
-              }
-              {...a11yProps(idx)}
-              sx={{
-                alignItems: 'start',
-                p: 0.5,
-                minWidth: 40,
-                maxWidth: 160,
-                borderRadius: 2,
-                mx: 0.5,
-                transition: 'background 0.2s',
-                '&.Mui-selected': {
-                  bgcolor: '#e3f0fd',
-                  color: 'primary.main',
-                },
-                '&:hover': {
-                  bgcolor: '#f0f4f8',
-                },
-              }}
-            />
-          ))}
-        </Tabs>
+                    <Tab
+                      label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+                          <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block', fontWeight: 500 }}>{t.name}</span>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              closeTab(idx);
+                            }}
+                            sx={{ ml: 0.5, color: 'text.secondary', '&:hover': { color: 'error.main', bgcolor: 'transparent' } }}
+                          >
+                            <CloseIcon fontSize="inherit" />
+                          </IconButton>
+                        </Box>
+                      }
+                      {...a11yProps(idx)}
+                      sx={{
+                        alignItems: 'start',
+                        p: 0.5,
+                        minWidth: 40,
+                        maxWidth: 160,
+                        borderRadius: 2,
+                        mx: 0.5,
+                        transition: 'background 0.2s',
+                        '&.Mui-selected': {
+                          bgcolor: '#e3f0fd',
+                          color: 'primary.main',
+                        },
+                        '&:hover': {
+                          bgcolor: '#f0f4f8',
+                        },
+                      }}
+                    />
+                  </CSSTransition>
+                ))}
+              </Tabs>
+            </TransitionGroup>
+          </Box>
+          {/* Close All Button */}
+          <IconButton
+            aria-label="Close all tabs"
+            onClick={() => {
+              setTabs([]);
+              setActiveTab(0);
+            }}
+            sx={{
+              ml: 2,
+              px: 2,
+              py: 0.5,
+              borderRadius: 2,
+              bgcolor: '#f8d7da',
+              color: '#b71c1c',
+              border: '1px solid #f5c2c7',
+              fontWeight: 600,
+              fontSize: 15,
+              display: 'flex',
+              alignItems: 'center',
+              boxShadow: 1,
+              flexShrink: 0,
+              transition: 'background 0.2s, color 0.2s',
+              '&:hover': {
+                bgcolor: '#f1b0b7',
+                color: '#fff',
+                borderColor: '#f1b0b7',
+              },
+              '&:disabled': {
+                bgcolor: '#f5f5f5',
+                color: '#bdbdbd',
+                borderColor: '#e0e0e0',
+              },
+            }}
+            disabled={tabs.length === 0}
+          >
+            <CloseIcon sx={{ fontSize: 18, mr: 1, color: 'inherit' }} />
+            Close All
+          </IconButton>
+        </Box>
 
         {/* Viewer panels */}
         <Box sx={{ flexGrow: 1, minHeight: 0, p: 2, pt: 1 }}>
